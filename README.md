@@ -5,7 +5,7 @@ Python/FastAPI backend scaffold for a vertical-focused “Indian Jarvis” that 
 ## Quickstart
 
 ```bash
-cd projects/project-3-indian-jarvis-twin
+cd projects/indian-jarvis-twin
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
@@ -25,3 +25,14 @@ uvicorn src.main:app --reload
 - State store defaults to **SQLite**. Neo4j integration is scaffolded as an interface so you can swap in later.
 - ML pieces (Whisper/Ultralytics/TTS) are wrapped behind small service classes. You can run with mocks first.
 
+## Training risk models (XGBoost)
+
+This repo stores:
+- events in SQLite table `events`
+- state snapshots in SQLite table `state_snapshots`
+
+To train **real** models you provide labels as CSVs (see `data/labels/` format in `train.py`).
+
+```bash
+python src/train.py --db ./jarvis_state.db --out ./models
+```

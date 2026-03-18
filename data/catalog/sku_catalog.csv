@@ -1,0 +1,7 @@
+sku_id,sku_name,category,reorder_threshold_pct
+SKU_COTTON_001,Cotton Roll 40m (White),Fabric,20
+SKU_POLY_002,Polyester Roll 50m (Black),Fabric,20
+SKU_SILK_003,Silk Roll 30m (Assorted),Fabric,20
+SKU_SHIRTBOX_004,Shirt Box Mixed Sizes (12 pcs),Apparel,20
+SKU_SAREE_005,Saree Bundle (5 pcs),Apparel,20
+

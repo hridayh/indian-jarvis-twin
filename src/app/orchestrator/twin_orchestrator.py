@@ -16,9 +16,11 @@ class TwinOrchestrator:
     vision: object
     extractor: object
     tts: object
+    risk_predictor: RiskPredictor | None = None
 
     def __post_init__(self):
-        self.risk_predictor = RiskPredictor()
+        if self.risk_predictor is None:
+            self.risk_predictor = RiskPredictor()
 
     async def process_whatsapp_webhook(self, webhook: TwilioWhatsAppWebhook) -> OrchestrationResult:
         self.state_store.ensure_client(webhook.client_id)

@@ -25,7 +25,11 @@ class WhisperSTT:
             raise RuntimeError(
                 "faster-whisper not installed/working. Install deps or swap STT implementation."
             ) from e
-        self._model = WhisperModel(self.model_name, device=self.device)
+        # Prefer CUDA if requested; fall back to CPU if CUDA init fails (common on misconfigured setups)
+        try:
+            self._model = WhisperModel(self.model_name, device=self.device)
+        except Exception:
+            self._model = WhisperModel(self.model_name, device="cpu")
         return self._model
 
     def transcribe(self, audio_bytes: bytes, *, content_type: str | None = None) -> dict:

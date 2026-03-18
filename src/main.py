@@ -10,6 +10,7 @@ from app.ai.llm import OllamaBusinessExtractor
 from app.ai.stt import WhisperSTT
 from app.ai.vision import UltralyticsInventoryVision
 from app.ai.tts import CoquiTTS
+from app.prediction.risk import RiskPredictor
 
 
 def create_app() -> FastAPI:
@@ -23,12 +24,20 @@ def create_app() -> FastAPI:
     # Core services (DI via app.state)
     state_store = SQLiteStateStore(db_url=settings.state_store_sqlite_url)
     stt = WhisperSTT(model_name=settings.stt_model_name, device=settings.stt_device)
-    vision = UltralyticsInventoryVision(model_path=settings.vision_model_path)
+    vision = UltralyticsInventoryVision(
+        model_path=settings.vision_model_path,
+        sku_mapping_path=settings.vision_sku_mapping_path,
+    )
     extractor = OllamaBusinessExtractor(
         base_url=settings.ollama_base_url,
         model=settings.ollama_model,
     )
     tts = CoquiTTS(model_name=settings.tts_model_name)
+    risk_predictor = RiskPredictor(
+        model_dir=settings.risk_model_dir,
+        stockout_label=settings.risk_stockout_label,
+        payment_delay_label=settings.risk_payment_delay_label,
+    )
 
     app.state.settings = settings
     app.state.state_store = state_store
@@ -38,6 +47,7 @@ def create_app() -> FastAPI:
         vision=vision,
         extractor=extractor,
         tts=tts,
+        risk_predictor=risk_predictor,
     )
 
     app.include_router(ingest_router, tags=["ingestion"])

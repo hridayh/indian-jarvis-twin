@@ -1,0 +1,16 @@
+{
+  "mode": "class_to_sku",
+  "class_to_sku": {
+    "cotton_roll": "SKU_COTTON_001",
+    "polyester_roll": "SKU_POLY_002",
+    "silk_roll": "SKU_SILK_003",
+    "shirt_box": "SKU_SHIRTBOX_004",
+    "saree_bundle": "SKU_SAREE_005"
+  },
+  "count_to_level_pct": {
+    "min_count": 0,
+    "max_count": 20
+  },
+  "notes": "MVP synthetic mapping. Replace with your model's real class list and mapping rules (or zone-based mapping)."
+}
+
