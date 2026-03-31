@@ -33,8 +33,10 @@ class BusinessState(BaseModel):
 
 class OrchestrationResult(BaseModel):
     client_id: str
+    transcript: str | None = None          # STT output (what Whisper heard)
     recommendation_text: str
     risk: dict
     updated_state: BusinessState
+    llm_extracted: BusinessState | None = None  # Raw LLM output THIS request (before merge)
     tts_audio_wav_b64: str | None = None
 

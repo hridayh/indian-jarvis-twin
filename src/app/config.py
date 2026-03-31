@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     state_store_sqlite_url: str = "sqlite:///./jarvis_state.db"
 
     # STT
-    stt_model_name: str = "small"  # for faster-whisper: tiny/base/small/medium/large-v3
-    stt_device: str = "cuda"  # cpu/cuda (will fall back to cpu if cuda init fails)
+    stt_model_name: str = "medium"  # for faster-whisper: tiny/base/small/medium/large-v3
+    stt_device: str = "cuda"  # cpu/cuda — requires CUDA 12 toolkit + torch with CUDA
 
     # Vision
     vision_model_path: str | None = None  # e.g. "./models/yolo.pt"
@@ -20,10 +20,11 @@ class Settings(BaseSettings):
 
     # LLM (Ollama)
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.1:8b-instruct"
+    ollama_model: str = "llama3.2:3b"
 
-    # TTS (Coqui)
-    tts_model_name: str = "tts_models/multilingual/multi-dataset/xtts_v2"
+    # TTS — "mms" (default, ~350 MB, local Hindi) | "coqui" (~4 GB, multilingual)
+    tts_provider: str = "mms"
+    tts_model_name: str = "tts_models/multilingual/multi-dataset/xtts_v2"  # only used when provider=coqui
 
     # Risk model persistence (trained XGBoost models)
     risk_model_dir: str | None = "./models"

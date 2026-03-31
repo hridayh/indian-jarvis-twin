@@ -75,9 +75,10 @@ def main() -> int:
     labels["as_of"] = pd.to_datetime(labels["as_of"], utc=True, errors="coerce")
     labels = labels.dropna(subset=["as_of"])
 
-    # Join labels to nearest snapshot at-or-before as_of per client
-    feat_df = feat_df.sort_values(["client_id", "snapshot_time"])
-    labels = labels.sort_values(["client_id", "as_of"])
+    # merge_asof requires both frames sorted by the join key (as_of / snapshot_time) only;
+    # client_id grouping is handled via `by=` — sorting on it first breaks the key order.
+    feat_df = feat_df.sort_values("snapshot_time").reset_index(drop=True)
+    labels  = labels.sort_values("as_of").reset_index(drop=True)
     joined = pd.merge_asof(
         labels,
         feat_df,

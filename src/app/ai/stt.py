@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import tempfile
+
+logger = logging.getLogger(__name__)
 
 
 class WhisperSTT:
@@ -27,9 +30,13 @@ class WhisperSTT:
             ) from e
         # Prefer CUDA if requested; fall back to CPU if CUDA init fails (common on misconfigured setups)
         try:
+            logger.info("[STT] Loading faster-whisper model '%s' on device='%s'", self.model_name, self.device)
             self._model = WhisperModel(self.model_name, device=self.device)
-        except Exception:
+            logger.info("[STT] Model loaded on %s", self.device)
+        except Exception as e:
+            logger.warning("[STT] CUDA init failed (%s), falling back to CPU", e)
             self._model = WhisperModel(self.model_name, device="cpu")
+            logger.info("[STT] Model loaded on cpu (fallback)")
         return self._model
 
     def transcribe(self, audio_bytes: bytes, *, content_type: str | None = None) -> dict:
@@ -42,12 +49,23 @@ class WhisperSTT:
             f.write(audio_bytes)
             tmp_path = f.name
         try:
-            model = self._lazy_model()
-            segments, info = model.transcribe(tmp_path, beam_size=5)
+            logger.info("[STT] Starting transcription (audio size=%d bytes)", len(audio_bytes))
+            try:
+                model = self._lazy_model()
+                segments, info = model.transcribe(tmp_path, beam_size=5)
+            except RuntimeError as cuda_err:
+                # CUDA libs missing at inference time — reload on CPU and retry
+                logger.warning("[STT] CUDA inference failed (%s), retrying on CPU", cuda_err)
+                from faster_whisper import WhisperModel
+                self._model = WhisperModel(self.model_name, device="cpu")
+                model = self._model
+                segments, info = model.transcribe(tmp_path, beam_size=5)
             text = "".join(seg.text for seg in segments).strip()
+            lang = getattr(info, "language", None)
+            logger.info("[STT] ✅ Transcript [lang=%s]: %r", lang, text)
             return {
                 "text": text,
-                "language": getattr(info, "language", None),
+                "language": lang,
                 "segments": [
                     {"start": s.start, "end": s.end, "text": s.text} for s in segments
                 ],
