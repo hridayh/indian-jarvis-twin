@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice AI Digital Twin — SMB Operator Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #08090d;
+      --surface:   #111318;
+      --surface2:  #171a23;
+      --border:    #1f2333;
+      --border2:   #2a2f45;
+      --accent:    #4f8ef7;   /* blue — pipeline highlight */
+      --green:     #22c55e;
+      --amber:     #f59e0b;
+      --red:       #ef4444;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --muted2:    #94a3b8;
+      --radius:    10px;
+      --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 80px;
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    header { text-align: center; margin-bottom: 10px; max-width: 720px; }
+    .badge-row {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 8px; margin-bottom: 18px;
+    }
+    .chip {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: .04em;
+      padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border2);
+      color: var(--muted2); background: var(--surface);
+      text-transform: uppercase;
+    }
+    .chip.live { border-color: var(--green); color: var(--green); }
+
+    header h1 {
+      font-size: 1.9rem; font-weight: 700; line-height: 1.2;
+      color: var(--text); letter-spacing: -.02em;
+      margin-bottom: 10px;
+    }
+    header h1 span { color: var(--accent); }
+    header p {
+      font-size: 0.9rem; color: var(--muted2); line-height: 1.6;
+      max-width: 600px; margin: 0 auto 20px;
+    }
+
+    /* ── Pipeline strip ─────────────────────────── */
+    .pipeline {
+      display: flex; align-items: center; justify-content: center;
+      flex-wrap: wrap; gap: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 20px;
+      margin-bottom: 32px; width: 100%; max-width: 800px;
+    }
+    .p-step {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px; border-radius: 6px;
+      font-size: 0.78rem; font-weight: 600; color: var(--muted2);
+      transition: color .2s, background .2s;
+      position: relative;
+    }
+    .p-step.active { color: var(--text); background: var(--surface2); }
+    .p-step .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border2); flex-shrink: 0;
+      transition: background .2s;
+    }
+    .p-step.active .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .p-step.done .dot   { background: var(--green); }
+    .p-step.done        { color: var(--muted2); }
+    .p-arrow { color: var(--border2); font-size: 0.85rem; padding: 0 2px; user-select: none; }
+
+    /* ── Layout grid ─────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%; max-width: 800px;
+    }
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Card ────────────────────────────────────── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .card-title {
+      font-size: 0.8rem; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted); display: flex;
+      align-items: center; gap: 8px;
+    }
+
+    /* ── Form ────────────────────────────────────── */
+    label { font-size: 0.75rem; color: var(--muted); }
+    input[type="text"], input[type="file"], textarea {
+      width: 100%; background: var(--bg);
+      border: 1px solid var(--border2); border-radius: 7px;
+      color: var(--text); padding: 8px 11px; font-size: 0.85rem;
+      outline: none; transition: border-color .15s;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 86px; line-height: 1.5; }
+
+    /* ── Buttons ─────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 7px; padding: 9px 16px; border: none; border-radius: 7px;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      transition: opacity .15s, transform .1s; width: 100%;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-blue    { background: var(--accent); color: #fff; }
+    .btn-outline {
+      background: transparent; border: 1px solid var(--border2);
+      color: var(--muted2);
+    }
+    .btn-red     { background: var(--red); color: #fff; }
+
+    /* ── Mic ─────────────────────────────────────── */
+    .mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    #mic-btn {
+      width: 64px; height: 64px; border-radius: 50%;
+      font-size: 1.6rem; padding: 0;
+      background: var(--surface2); border: 2px solid var(--border2);
+      color: var(--text); cursor: pointer; transition: all .2s;
+    }
+    #mic-btn:hover  { border-color: var(--accent); }
+    #mic-btn.recording {
+      background: var(--red); border-color: var(--red);
+      animation: pulse 1.1s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+      50%      { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+    }
+    .rec-label {
+      font-size: 0.72rem; font-weight: 600; color: var(--red);
+      letter-spacing: .05em; display: none;
+    }
+    .rec-label.active { display: block; }
+
+    .divider {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Tabs ────────────────────────────────────── */
+    .tab-bar { display: flex; gap: 6px; margin-bottom: 16px; }
+    .tab {
+      padding: 6px 14px; border-radius: 6px;
+      border: 1px solid var(--border2); background: transparent;
+      color: var(--muted); cursor: pointer; font-size: 0.8rem; font-weight: 600;
+      transition: all .15s;
+    }
+    .tab:hover  { color: var(--text); }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Output ─────────────────────────────────── */
+    .output-wrap { width: 100%; max-width: 800px; margin-top: 16px; }
+    .output-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px;
+      display: none; flex-direction: column; gap: 18px;
+    }
+    .output-card.visible { display: flex; }
+
+    .section-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    }
+
+    /* Response text */
+    .response-box {
+      background: var(--bg);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 7px 7px 0;
+      padding: 14px 16px;
+      font-size: 1rem; line-height: 1.65;
+      color: var(--text);
+    }
+
+    /* Audio */
+    audio { width: 100%; border-radius: 7px; margin-top: 4px; }
+
+    /* Risk bars */
+    .risk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .risk-block { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .risk-name  { font-size: 0.72rem; color: var(--muted); margin-bottom: 6px; }
+    .risk-val   { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+    .bar-wrap   { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .bar        { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+    /* State grid */
+    .state-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .state-cell {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 7px; padding: 9px 11px;
+    }
+    .cell-key { font-size: 0.68rem; color: var(--muted); margin-bottom: 3px; }
+    .cell-val { font-size: 0.9rem; font-weight: 600; }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 2px 9px; border-radius: 20px; letter-spacing: .04em;
+    }
+    .sb-idle    { background: var(--surface2); color: var(--muted); }
+    .sb-running { background: #1c2a4a; color: #7aa8f7; }
+    .sb-ok      { background: #14311e; color: var(--green); }
+    .sb-error   { background: #2d1212; color: var(--red); }
+
+    /* Spinner */
+    .spin {
+      display: none; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.2); border-top-color: #fff;
+      border-radius: 50%; animation: rot .6s linear infinite;
+    }
+    .spin.on { display: inline-block; }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    /* Image preview */
+    #img-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 7px; display: none; }
+    #img-preview.visible { display: block; }
+
+    /* Stack strip */
+    .stack-strip {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 8px; margin-top: 32px; max-width: 800px;
+    }
+    .stack-pill {
+      font-size: 0.7rem; color: var(--muted); border: 1px solid var(--border);
+      border-radius: 20px; padding: 3px 11px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────── -->
+<header>
+  <div class="badge-row">
+    <span class="chip live">● Local Inference</span>
+    <span class="chip">No Cloud</span>
+    <span class="chip">Voice-First</span>
+    <span class="chip">Hindi-Native</span>
+  </div>
+  <h1>Voice AI <span>Digital Twin</span><br>for SMB Operators</h1>
+  <p>
+    Operators speak in Hindi or Hinglish about stock, credit, and sales.
+    The system listens, updates a per-client business state, scores risk,
+    and responds — in voice.
+  </p>
+</header>
+
+<!-- ── Pipeline strip ─────────────────────────────────── -->
+<div class="pipeline" id="pipeline">
+  <div class="p-step" id="ps-stt"><div class="dot"></div>Whisper STT</div>
+  <div class="p-arrow">→</div>
+  <div class="p-step" id="ps-llm"><div class="dot"></div>LLM Extraction</div>
+  <div class="p-arrow">→</div>
+  <div class="p-step" id="ps-twin"><div class="dot"></div>Digital Twin</div>
+  <div class="p-arrow">→</div>
+  <div class="p-step" id="ps-xgb"><div class="dot"></div>XGBoost Risk</div>
+  <div class="p-arrow">→</div>
+  <div class="p-step" id="ps-tts"><div class="dot"></div>Hindi TTS</div>
+</div>
+
+<!-- ── Client ID ───────────────────────────────────────── -->
+<div style="width:100%;max-width:800px;margin-bottom:14px;">
+  <label style="display:block;margin-bottom:5px;">Operator / Client ID</label>
+  <input type="text" id="client-id" value="+91-9876543210"
+    placeholder="+91-RAVI-TEXTILES" style="max-width:320px;" />
+</div>
+
+<!-- ── Tab bar ─────────────────────────────────────────── -->
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('voice')">🎙 Voice Note</button>
+  <button class="tab"        onclick="switchTab('text')">💬 Text / WhatsApp</button>
+  <button class="tab"        onclick="switchTab('cctv')">📷 CCTV Snapshot</button>
+</div>
+
+<!-- ── Input panels ───────────────────────────────────── -->
+<div class="grid">
+
+  <!-- VOICE -->
+  <div class="card" id="panel-voice">
+    <div class="card-title">🎙 Voice Note Input</div>
+    <div class="mic-wrap">
+      <button id="mic-btn" title="Click to record / stop">🎤</button>
+      <div class="rec-label" id="rec-label">● RECORDING</div>
+    </div>
+    <div class="divider">or upload file</div>
+    <input type="file" id="audio-file" accept="audio/*" />
+    <button class="btn btn-blue" id="send-voice-btn" onclick="submitVoice()">
+      <span class="spin" id="voice-spin"></span>
+      Send to System
+    </button>
+  </div>
+
+  <!-- TEXT -->
+  <div class="card" id="panel-text" style="display:none;">
+    <div class="card-title">💬 WhatsApp Text Simulation</div>
+    <label>Hinglish / Hindi message</label>
+    <textarea id="text-msg"
+      placeholder="e.g. Bhai cotton roll ka stock bahut kam ho gaya. Mehta ji ka 50k payment 18 din se nahi aaya."></textarea>
+    <button class="btn btn-blue" onclick="submitText()">
+      <span class="spin" id="text-spin"></span>
+      Send to System
+    </button>
+  </div>
+
+  <!-- CCTV -->
+  <div class="card" id="panel-cctv" style="display:none;">
+    <div class="card-title">📷 CCTV Inventory Snapshot</div>
+    <label>Camera ID</label>
+    <input type="text" id="camera-id" value="cam-01" />
+    <label style="margin-top:4px;">Shelf image (JPG / PNG)</label>
+    <input type="file" id="cctv-file" accept="image/*" onchange="previewImage(this)" />
+    <img id="img-preview" alt="preview" />
+    <button class="btn btn-blue" onclick="submitCCTV()">
+      <span class="spin" id="cctv-spin"></span>
+      Analyse Inventory
+    </button>
+  </div>
+
+  <!-- LIVE STATE (right column, always visible) -->
+  <div class="card" id="state-sidebar">
+    <div class="card-title" style="justify-content:space-between;">
+      Digital Twin State
+      <span class="status-badge sb-idle" id="status-badge">idle</span>
+    </div>
+    <div class="state-row" id="state-grid">
+      <div class="state-cell"><div class="cell-key">Demand</div><div class="cell-val" id="st-demand">—</div></div>
+      <div class="state-cell"><div class="cell-key">Sales (₹)</div><div class="cell-val" id="st-sales">—</div></div>
+      <div class="state-cell"><div class="cell-key">Credit (₹)</div><div class="cell-val" id="st-credit">—</div></div>
+      <div class="state-cell"><div class="cell-key">Due Days</div><div class="cell-val" id="st-due">—</div></div>
+    </div>
+    <!-- Inventory pills will append here -->
+    <div id="inv-grid" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+  </div>
+
+</div>
+
+<!-- ── Output ─────────────────────────────────────────── -->
+<div class="output-wrap">
+  <div class="output-card" id="output-card">
+
+    <!-- STT Transcript (only shown for voice input) -->
+    <div id="transcript-section" style="display:none;">
+      <div class="section-label">🎙 Whisper Heard</div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:7px;
+                  padding:10px 14px;font-size:0.88rem;color:var(--muted2);font-style:italic;"
+           id="transcript-text">—</div>
+    </div>
+
+    <!-- LLM extracted THIS request -->
+    <div id="llm-section" style="display:none;">
+      <div class="section-label">🧠 LLM Extracted from Voice</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;" id="llm-chips"></div>
+    </div>
+
+    <!-- Response text -->
+    <div>
+      <div class="section-label">System Response</div>
+      <div class="response-box" id="rec-text">—</div>
+    </div>
+
+    <!-- TTS audio player -->
+    <div id="audio-section" style="display:none;">
+      <div class="section-label">🔊 Voice Reply (Hindi TTS)</div>
+      <audio id="tts-player" controls style="margin-top:6px;"></audio>
+    </div>
+
+    <!-- Risk -->
+    <div>
+      <div class="section-label">Risk Scores</div>
+      <div class="risk-row">
+        <div class="risk-block">
+          <div class="risk-name">📦 Stockout Risk (7d)</div>
+          <div class="risk-val" id="stockout-val">—</div>
+          <div class="bar-wrap"><div class="bar" id="stockout-bar" style="width:0%"></div></div>
+        </div>
+        <div class="risk-block">
+          <div class="risk-name">💸 Payment Delay (7d)</div>
+          <div class="risk-val" id="pay-val">—</div>
+          <div class="bar-wrap"><div class="bar" id="pay-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw JSON toggle -->
+    <details>
+      <summary style="font-size:0.75rem;color:var(--muted);cursor:pointer;user-select:none;">
+        Raw JSON response
+      </summary>
+      <pre id="raw-json"
+        style="font-size:0.73rem;color:var(--muted);margin-top:10px;background:var(--bg);
+               padding:12px;border-radius:7px;overflow:auto;max-height:260px;white-space:pre-wrap;
+               word-break:break-word;border:1px solid var(--border);">—</pre>
+    </details>
+
+  </div>
+</div>
+
+<!-- ── Stack strip ────────────────────────────────────── -->
+<div class="stack-strip">
+  <span class="stack-pill">FastAPI</span>
+  <span class="stack-pill">Whisper STT</span>
+  <span class="stack-pill">Ollama LLM</span>
+  <span class="stack-pill">XGBoost</span>
+  <span class="stack-pill">YOLO Vision</span>
+  <span class="stack-pill">MMS Hindi TTS</span>
+  <span class="stack-pill">SQLite · Neo4j interface</span>
+</div>
+
+
+<script>
+/* ── Config ─────────────────────────────────────────── */
+const API = 'http://localhost:8000';
+
+/* ── Pipeline stage IDs in order ────────────────────── */
+const STAGES = ['stt','llm','twin','xgb','tts'];
+
+function setPipeline(active) {
+  // active: index 0-4 or -1 (all idle), 'done' (all done)
+  STAGES.forEach((id, i) => {
+    const el = document.getElementById('ps-' + id);
+    el.classList.remove('active','done');
+    if (active === 'done')          el.classList.add('done');
+    else if (i === active)          el.classList.add('active');
+    else if (active >= 0 && i < active) el.classList.add('done');
+  });
+}
+
+/* animate through stages during a call */
+let _pipeTimer = null;
+function animatePipeline() {
+  let i = 0;
+  setPipeline(0);
+  _pipeTimer = setInterval(() => {
+    i++;
+    if (i < STAGES.length) setPipeline(i);
+    else { clearInterval(_pipeTimer); }
+  }, 800);
+}
+function stopPipeline(ok) {
+  clearInterval(_pipeTimer);
+  setPipeline(ok ? 'done' : -1);
+}
+
+/* ── Tabs ────────────────────────────────────────────── */
+function switchTab(name) {
+  ['voice','text','cctv'].forEach((t, i) => {
+    document.getElementById('panel-' + t).style.display = (t === name) ? '' : 'none';
+    document.querySelectorAll('.tab')[i].classList.toggle('active', t === name);
+  });
+}
+
+/* ── Image preview ───────────────────────────────────── */
+function previewImage(inp) {
+  const p = document.getElementById('img-preview');
+  if (inp.files && inp.files[0]) {
+    p.src = URL.createObjectURL(inp.files[0]);
+    p.classList.add('visible');
+  }
+}
+
+/* ── Mic recording ───────────────────────────────────── */
+let mediaRecorder = null, audioChunks = [], isRecording = false;
+const micBtn   = document.getElementById('mic-btn');
+const recLabel = document.getElementById('rec-label');
+
+micBtn.addEventListener('click', async () => {
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.start(100);
+      isRecording = true;
+      micBtn.textContent = '⏹';
+      micBtn.classList.add('recording');
+      recLabel.classList.add('active');
+    } catch(e) { alert('Mic access denied: ' + e.message); }
+  } else {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    isRecording = false;
+    micBtn.textContent = '🎤';
+    micBtn.classList.remove('recording');
+    recLabel.classList.remove('active');
+  }
+});
+
+/* ── Submit handlers ─────────────────────────────────── */
+async function submitVoice() {
+  let blob;
+  const file = document.getElementById('audio-file');
+  if (audioChunks.length > 0) blob = new Blob(audioChunks, { type: 'audio/webm' });
+  else if (file.files && file.files[0]) blob = file.files[0];
+  else { alert('Record or upload an audio file first.'); return; }
+
+  const fd = new FormData();
+  fd.append('client_id', clientId());
+  fd.append('audio', blob, 'voice.webm');
+  await call('/demo/voice', fd, 'voice-spin');
+}
+
+async function submitText() {
+  const msg = document.getElementById('text-msg').value.trim();
+  if (!msg) { alert('Enter a message.'); return; }
+  const fd = new FormData();
+  fd.append('client_id', clientId());
+  fd.append('message', msg);
+  await call('/demo/text', fd, 'text-spin');
+}
+
+async function submitCCTV() {
+  const file = document.getElementById('cctv-file');
+  if (!file.files || !file.files[0]) { alert('Upload a snapshot image.'); return; }
+  const fd = new FormData();
+  fd.append('client_id', clientId());
+  fd.append('camera_id', document.getElementById('camera-id').value.trim() || 'cam-01');
+  fd.append('image', file.files[0]);
+  await call('/demo/cctv', fd, 'cctv-spin');
+}
+
+function clientId() {
+  return document.getElementById('client-id').value.trim() || 'demo-client';
+}
+
+/* ── Core API call ───────────────────────────────────── */
+async function call(path, formData, spinnerId) {
+  const spinner   = document.getElementById(spinnerId);
+  const outCard   = document.getElementById('output-card');
+  const badge     = document.getElementById('status-badge');
+
+  spinner.classList.add('on');
+  outCard.classList.add('visible');
+  badge.textContent = 'processing…';
+  badge.className   = 'status-badge sb-running';
+  animatePipeline();
+
+  try {
+    const res = await fetch(API + path, { method: 'POST', body: formData });
+    if (!res.ok) { const t = await res.text(); throw new Error(`HTTP ${res.status}: ${t}`); }
+    const data = await res.json();
+    render(data);
+    badge.textContent = '● done';
+    badge.className   = 'status-badge sb-ok';
+    stopPipeline(true);
+  } catch(err) {
+    badge.textContent = 'error';
+    badge.className   = 'status-badge sb-error';
+    document.getElementById('rec-text').textContent = '⚠ ' + err.message;
+    document.getElementById('raw-json').textContent = err.toString();
+    stopPipeline(false);
+    console.error(err);
+  } finally {
+    spinner.classList.remove('on');
+  }
+}
+
+/* ── Render response ─────────────────────────────────── */
+function render(data) {
+  // STT transcript
+  const transcriptSec  = document.getElementById('transcript-section');
+  const transcriptText = document.getElementById('transcript-text');
+  if (data.transcript) {
+    transcriptText.textContent = data.transcript;
+    transcriptSec.style.display = '';
+  } else {
+    transcriptSec.style.display = 'none';
+  }
+
+  // LLM extracted — show what the model pulled from THIS voice/text input
+  const llmSec   = document.getElementById('llm-section');
+  const llmChips = document.getElementById('llm-chips');
+  const lx = data.llm_extracted || {};
+  const llmFields = [
+    { key: 'Demand',    val: lx.demand_signal },
+    { key: 'Sales',     val: lx.recent_sales_amount_inr != null ? '₹' + fmt(lx.recent_sales_amount_inr) : null },
+    { key: 'Credit',    val: lx.credit_outstanding_inr  != null ? '₹' + fmt(lx.credit_outstanding_inr)  : null },
+    { key: 'Due Days',  val: lx.payment_due_days != null ? lx.payment_due_days + 'd' : null },
+    { key: 'SKUs',      val: (lx.inventory || []).length > 0 ? (lx.inventory || []).map(i => i.sku).join(', ') : null },
+  ].filter(f => f.val);
+  if (llmFields.length > 0) {
+    llmChips.innerHTML = llmFields.map(f =>
+      `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;
+                   padding:5px 12px;font-size:0.78rem;">
+         <span style="color:var(--muted);margin-right:5px;">${f.key}</span>
+         <span style="font-weight:700;color:var(--accent);">${f.val}</span>
+       </div>`
+    ).join('');
+    llmSec.style.display = '';
+  } else {
+    llmChips.innerHTML = '<span style="font-size:0.78rem;color:var(--muted);font-style:italic;">Nothing new extracted — Twin using stored state</span>';
+    llmSec.style.display = '';
+  }
+
+  // Response text
+  document.getElementById('rec-text').textContent =
+    data.recommendation_text || '(no recommendation)';
+
+  // TTS audio
+  const audioSec  = document.getElementById('audio-section');
+  const ttsPlayer = document.getElementById('tts-player');
+  if (data.tts_audio_wav_b64) {
+    ttsPlayer.src = URL.createObjectURL(b64Blob(data.tts_audio_wav_b64, 'audio/wav'));
+    audioSec.style.display = '';
+    // Small delay lets the browser register the new src before playing
+    setTimeout(() => ttsPlayer.play().catch(() => {}), 100);
+  } else {
+    audioSec.style.display = 'none';
+  }
+
+  // Risk
+  setRisk('stockout', (data.risk || {}).stockout);
+  setRisk('pay',      (data.risk || {}).payment_delay);
+
+  // State sidebar
+  const st = data.updated_state || {};
+  document.getElementById('st-demand').textContent  = st.demand_signal || '—';
+  document.getElementById('st-sales').textContent   =
+    st.recent_sales_amount_inr != null ? '₹' + fmt(st.recent_sales_amount_inr) : '—';
+  document.getElementById('st-credit').textContent  =
+    st.credit_outstanding_inr  != null ? '₹' + fmt(st.credit_outstanding_inr)  : '—';
+  document.getElementById('st-due').textContent     =
+    st.payment_due_days != null ? st.payment_due_days + 'd' : '—';
+
+  // Inventory pills
+  const invGrid = document.getElementById('inv-grid');
+  invGrid.innerHTML = '';
+  (st.inventory || []).forEach(inv => {
+    const lvl  = inv.level_pct != null ? inv.level_pct.toFixed(0) + '%' : '—';
+    const col   = inv.level_pct == null ? 'var(--muted)' :
+                  inv.level_pct < 20    ? 'var(--red)' :
+                  inv.level_pct < 40    ? 'var(--amber)' : 'var(--green)';
+    invGrid.innerHTML += `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;
+                  padding:6px 10px;min-width:100px;">
+        <div style="font-size:.65rem;color:var(--muted);margin-bottom:3px;">${inv.sku}</div>
+        <div style="font-size:.95rem;font-weight:700;color:${col};">${lvl}</div>
+      </div>`;
+  });
+
+  // Raw JSON
+  document.getElementById('raw-json').textContent = JSON.stringify(data, null, 2);
+}
+
+function setRisk(prefix, val) {
+  const pct = val != null ? val * 100 : null;
+  document.getElementById(prefix + '-val').textContent = pct != null ? pct.toFixed(0) + '%' : '—';
+  const bar = document.getElementById(prefix + '-bar');
+  bar.style.width = pct != null ? pct + '%' : '0%';
+  bar.style.background = pct == null ? 'var(--border)' :
+                          pct < 30   ? 'var(--green)' :
+                          pct < 60   ? 'var(--amber)' : 'var(--red)';
+}
+
+function fmt(n) {
+  return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+function b64Blob(b64, mime) {
+  const bytes = atob(b64);
+  const arr   = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+</script>
+</body>
+</html>

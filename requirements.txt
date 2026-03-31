@@ -5,6 +5,7 @@ pydantic-settings==2.7.1
 python-multipart==0.0.9
 requests==2.32.3
 twilio==9.4.3
+aiofiles==23.2.1          # required by FastAPI StaticFiles
 
 # Persistence (baseline relational "Business Brain")
 SQLAlchemy==2.0.36
@@ -19,8 +20,16 @@ pandas==2.2.3
 scikit-learn==1.5.2
 joblib==1.4.2
 
-# Optional/Heavy (kept here for convenience; can be moved to requirements-ml.txt later)
+# STT
 faster-whisper==1.1.0
-torch==2.5.1
-ultralytics==8.3.63
-TTS==0.22.0
+
+# TTS — MMS (default, ~350 MB, local Hindi)
+transformers>=4.40.0
+soundfile>=0.12.1
+torch==2.5.1          # shared by STT + TTS + vision
+
+# TTS — Coqui XTTS v2 (optional, high quality, ~4 GB; set JARVIS_TTS_PROVIDER=coqui)
+# TTS==0.22.0
+
+# Vision (optional; stub works without it)
+# ultralytics==8.3.63

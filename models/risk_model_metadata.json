@@ -1,0 +1,40 @@
+{
+  "feature_version": 1,
+  "feature_columns": [
+    "credit_outstanding_inr",
+    "demand_signal_ordinal",
+    "inv_avg_level_pct",
+    "inv_known_levels_count",
+    "inv_min_level_pct",
+    "payment_due_days",
+    "recent_sales_amount_inr"
+  ],
+  "models": {
+    "payment_overdue14_w1": "payment_overdue14_w1_xgb.json",
+    "payment_overdue14_m1": "payment_overdue14_m1_xgb.json",
+    "payment_partial_w1": "payment_partial_w1_xgb.json",
+    "payment_partial_m1": "payment_partial_m1_xgb.json"
+  },
+  "metrics": {
+    "payment_overdue14_w1": {
+      "auc": 1.0,
+      "n_rows": 36,
+      "pos_rate": 0.5
+    },
+    "payment_overdue14_m1": {
+      "auc": 1.0,
+      "n_rows": 36,
+      "pos_rate": 0.5
+    },
+    "payment_partial_w1": {
+      "auc": 1.0,
+      "n_rows": 36,
+      "pos_rate": 0.3611111111111111
+    },
+    "payment_partial_m1": {
+      "auc": 1.0,
+      "n_rows": 36,
+      "pos_rate": 0.3611111111111111
+    }
+  }
+}
